@@ -1,0 +1,67 @@
+/*-- scss:defaults --*/
+
+// colors
+$theme-white: #F7F8F9;
+$theme-yellow: #F4BA02;
+$theme-lightyellow: #fbda6e;
+$theme-lightpurple: #f0d5f2;
+$theme-darkpurple: #351e66;
+$theme-mediumdarkpurple: #3f247a;
+$theme-mediumpurple: #472989;
+
+
+$body-bg: $theme-darkpurple;
+$body-color: $theme-white;
+$link-color: $theme-lightyellow;
+
+
+// fonts
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible&display=swap');
+
+$font-family-sans-serif: "Atkinson Hyperlegible", sans-serif;
+
+// font sizes
+$presentation-h1-font-size: 2.2em !default; /*-- 2.4em--*/
+//$code-block-font-size: 0.65em; //0.55em
+
+/*-- scss:rules --*/
+
+.yellow {
+  color: $theme-yellow;
+  //font-weight: bold;
+}
+
+@mixin background-full {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.theme-divider1 {
+  &:is(.slide-background) {
+    //background-image: url('../../../../../assets/slide1.svg');
+    //background-image: "../../images/lucas-santos-VaTJhvMBGNA-unsplash.jpg";
+    @include background-full;
+  }
+  h1 {
+    color: $theme-yellow;
+  }
+}
+
+.theme-divider1basic {
+  h1 {
+    color: $theme-white;
+  }
+}
+
+.theme-divider-1 {
+  &:is(.slide-background) {
+    background-color: $theme-mediumpurple;
+  }
+}
+
+.theme-divider-2 {
+  &:is(.slide-background) {
+    background-color: $theme-mediumdarkpurple;
+  }
+}

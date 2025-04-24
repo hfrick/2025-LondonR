@@ -1,0 +1,408 @@
+---
+title: "Cognition: <br>Programming Edition!"
+subtitle: "LondonR 2025"
+author: "Hannah Frick"
+format:
+  revealjs: 
+    slide-number: true
+    footer: <https://www.frick.ws>
+    theme: [default, style.scss]
+    highlight-style: a11y
+    width: 1280
+    height: 720
+knitr:
+  opts_chunk: 
+    echo: true
+    collapse: true
+    comment: "#>"
+    fig.path: "figures/"
+---
+
+
+## {.title background-image="images/ken-suarez-4IxPVkFGJGI-unsplash.jpg"}
+
+::: footer
+Photo by <a href="https://unsplash.com/@kensuarez?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Ken Suarez</a> on <a href="https://unsplash.com/photos/4IxPVkFGJGI?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>
+:::
+
+:::{.notes}
+- a lot of the tidyverse principles are based on ideas from cognitive psychology
+- aim is to give you a very basic idea of how our brain works
+- to give you a framework through which to assess programming best practices
+:::
+
+
+```{r prep}
+#| include: false
+
+library(tidymodels)
+```
+
+# Reading and understanding code {.theme-divider-1}
+
+# Research indicates that almost 60% of programmers’ time is spent understanding rather than writing code.
+
+Felienne Hermans - The Programmer's Brain
+
+::: {.notes}
+This talk draws heavily from this book. It's great, you might want to read it!
+:::
+
+---
+
+## Let's read some code
+
+```{r}
+my_fun <- function(a,  
+                   b,  
+                   c,  
+                   d = 2,  
+                   e = 3,  
+                   g = 22,  
+                   j = 324) {  
+  i <- a + c  
+  w <- (d + e) / ((a + c) + (d + e))  
+  four <- e - a  
+  f <- four - a  
+  ff <- i + w  
+  list(f, ff, four)  
+}
+```
+
+:::{.notes}
+- just pseudo code but still:
+- so many arguments!
+- no speaking names!
+- we just make some (very basic) calculations
+- why is this thing named four? 
+- we return 3 things but can you recall what they are?
+- we didn't even use all the arguments!
+:::
+
+
+# Our short-term memory (STM) only holds two to six items.
+
+## This is not even R code!
+
+```{C}
+#| code-line-numbers: "|3-7|9-16|10,15|19-26|20,24|"
+
+SEXP Cdqrls(SEXP x, SEXP y, SEXP tol, SEXP chk)
+{
+    SEXP ans;
+    SEXP qr, coefficients, residuals, effects, pivot, qraux;
+    int n, ny = 0, p, rank, nprotect = 4, pivoted = 0;
+    double rtol = asReal(tol), *work;
+    Rboolean check = asLogical(chk);
+
+    ans = getAttrib(x, R_DimSymbol);
+    if(check && length(ans) != 2) error(_("'x' is not a matrix"));
+    int *dims = INTEGER(ans);
+    n = dims[0]; p = dims[1];
+    if(n) ny = (int)(XLENGTH(y)/n); /* y :  n x ny, or an n - vector */
+    if(check && n * ny != XLENGTH(y))
+	error(_("dimensions of 'x' (%d,%d) and 'y' (%d) do not match"),
+	      n,p, XLENGTH(y));
+
+    /* These lose attributes, so do after we have extracted dims */
+    if (TYPEOF(x) != REALSXP) {
+	PROTECT(x = coerceVector(x, REALSXP));
+	nprotect++;
+    }
+    if (TYPEOF(y) != REALSXP) {
+	PROTECT(y = coerceVector(y, REALSXP));
+	nprotect++;
+    }
+/* < more code > */
+}
+```
+
+
+## This is not even R code!
+
+```{C}
+#| code-line-numbers: "3-7"
+
+SEXP Cdqrls(SEXP x, SEXP y, SEXP tol, SEXP chk)
+{
+    /* define some variables */
+
+    /* check inputs x and y */
+
+    /* protect x and y */
+
+/* < more code > */
+}
+```
+
+# Our long-term memory (LTM) helps us aggregate items in our STM into chunks.
+
+:::{.notes}
+our R knowledge allowed us to make some sense of C code
+:::
+
+
+## What does this do? And how?
+
+```{r}
+#| code-line-numbers: "|1,3,4,13"
+drop_strata <- function(expr, in_plus = TRUE) {
+  if (rlang::is_call(expr, "+", n = 2) && in_plus) {
+    lhs <- drop_strata(expr[[2]], in_plus = in_plus)
+    rhs <- drop_strata(expr[[3]], in_plus = in_plus)
+    if (rlang::is_call(lhs, "strata")) {
+      rhs
+    } else if (rlang::is_call(rhs, "strata")) {
+      lhs
+    } else {
+      rlang::call2("+", lhs, rhs)
+    }
+  } else if (rlang::is_call(expr)) {
+    expr[-1] <- purrr::map(as.list(expr[-1]), drop_strata, in_plus = FALSE)
+    expr
+  } else {
+    expr
+  }
+}
+```
+
+## Tests show (important) use cases
+
+```{r}
+#| eval: false
+#| code-line-numbers: "|1,13|3,4,8,9,15,16"
+
+test_that("`drop_strata()` removes strata term in a series of `+` calls", {
+  expect_equal(
+    drop_strata(rlang::expr(a + strata(x))),
+    rlang::expr(a)
+  )
+  
+  expect_equal(
+    drop_strata(rlang::expr(a + strata(x) + b)),
+    rlang::expr(a + b)
+  )
+})
+
+test_that("`drop_strata()` does not remove strata in other cases", {
+  expect_equal(
+    drop_strata(rlang::expr(a * (b + strata(x)))),
+    rlang::expr(a * (b + strata(x)))
+  )
+})
+```
+
+## Abstract syntax tree
+
+```{r}
+library(lobstr)
+
+ast(strata(x))
+
+ast(a + b)
+```
+
+## Abstract syntax tree
+
+```{r}
+library(lobstr)
+
+ast(a + strata(x))
+
+ast(a + strata(x) + b)
+```
+
+:::{.notes}
+- we go up and down that tree structure
+- recursive: which level are we at? -> keep track of that
+- keep track of what expr is
+:::
+
+
+
+# Our working memory is our STM applied to a problem.
+# Our working memory only holds two to six items.
+
+
+## Challenges 
+
+::: columns
+::: {.column width="50%"}
+- Lack of information
+- Lack of knowledge
+- Lack of processing power
+:::
+::: {.column width="50%"}
+:::
+:::
+
+## Challenges, for reasons
+
+::: columns
+::: {.column width="50%"}
+- Lack of information
+- Lack of knowledge
+- Lack of processing power
+:::
+::: {.column width="50%"}
+- Limited capacity of STM
+- Activation of LTM
+- Limited capacity of working memory
+:::
+:::
+
+
+## Help your brain out
+
+. . .
+
+- Look for beacons: names, comments, paragraphs
+- Summarize code into chunks via comments or refactoring
+
+. . .
+
+- Learn more: programming concepts, domain knowledge
+
+. . .
+
+- Offload information
+
+
+
+# Writing Code {.theme-divider-1}
+
+<!-- the empty notes block is so that the text is in the same place as on the next slide -->
+:::{.notes}
+:::
+
+# Writing is for re-reading
+
+:::{.notes}
+- optimize for the real bottleneck: us humans
+:::
+
+# Well-scoped code supports chunking.
+
+# Names {.theme-divider-2}
+
+# Good names help activate knowledge from your LTM.
+
+## {.center}
+
+::: r-fit-text
+```
+predict(survival_model, 
+        type = "survival",  
+        time = 2)
+```
+:::
+
+. . .
+
+`time`: the time points at which the survival probability is estimated
+
+
+# Bad names can hinder you by activating the wrong knowledge.
+
+## {.center}
+
+::: r-fit-text
+```
+predict(survival_model, 
+        type = "survival",  
+        eval_time = 2)
+```
+:::
+
+# Make (re)thinking names a separate step
+
+to avoid overloading your working memory.
+
+# Bad names are linguistic anti-patterns, code smells are structural anti-patterns.
+
+# Design patterns {.theme-divider-2}
+
+# Design patterns are reusable solutions to common problems.
+
+:::{.notes}
+- Learn once, apply many times
+- Learn once, recognize many times
+:::
+
+--- 
+
+## Many arguments
+
+```{r}
+my_fun <- function(x, 
+                   y,
+                   opt1 = 1,
+                   opt2 = 2, 
+                   opt3 = 3, 
+                   opt4 = 4){
+  ...  
+}
+```
+
+:::{.notes}
+- tidymodels: `tune_grid()`
+- options: `verbose`, `save_pred`, `extract`, parallel processing
+:::
+
+
+## Many arguments, revisited
+
+```{r}
+my_fun <- function(x, y, options = my_fun_opts()) {
+  ...
+}
+
+my_fun_opts <- function(opt1 = 1, opt2 = 2, opt3 = 3, opt4 = 4) {
+  list(
+    opt1 = opt1,
+    opt2 = opt2,
+    opt3 = opt3, 
+    opt4 = opt4
+  ) 
+}
+```
+
+:::{.notes}
+- tidymodels: `control_grid()`, 
+- also: `control_bayes()`, `control_parsnip()`
+:::
+
+
+# Design patterns can help lower the cognitive load.
+
+
+<!-- ## [outro] -->
+
+##  {.title background-image="images/ken-suarez-4IxPVkFGJGI-unsplash.jpg"}
+
+::: footer
+Photo by <a href="https://unsplash.com/@kensuarez?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Ken Suarez</a> on <a href="https://unsplash.com/photos/4IxPVkFGJGI?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>
+:::
+
+:::{.notes}
+- want to leave you with two things
+:::
+
+
+# Having a mental model of how your brain works helps you to [work _with_ it, not against it]{.yellow}.
+
+:::{.notes}
+- knowing how the limits manifest, knowing how to support yourself
+- your mind can only hold so much at a time
+- support it so you can focus that capacity on what matters to you
+:::
+
+# If you want your code to grow in complexity, <br>you need to keep (re-)chunking. 
+
+:::{.notes}
+- why refactoring and upkeep matter
+:::
+
+# Keynote at LatinR 2023
+
+Full talk at <https://hfrick.github.io/2023-latinr/>
